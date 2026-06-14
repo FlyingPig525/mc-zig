@@ -98,4 +98,20 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_nbt_tests.step);
+
+    const gen_exe = b.addExecutable(.{
+        .name = "gen",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("gen/main.zig"),
+            .target = target,
+            .optimize = optimize,
+        })
+    });
+    b.installArtifact(gen_exe);
+
+    const gen_step = b.step("gen", "Generate data from a game jar");
+    const run_gen = b.addRunArtifact(gen_exe);
+    run_gen.setCwd(b.path("gen"));
+    gen_step.dependOn(&run_gen.step);
+    gen_step.dependOn(b.getInstallStep());
 }

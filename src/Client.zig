@@ -60,31 +60,30 @@ pub fn sendPacket(this: *Client, packet: anytype) !void {
     try this.tcp_client.writeMessage(packet);
 } 
 
-pub fn handleLogin(this: *Client) !void {
+pub fn handleConnection(this: *Client) !void {
     while(this.state.load(.acquire) != .play) {
         log.info("Reading message", .{});
-        const packet = this.tcp_client.readMessage() catch |err| {
+        const packet = this.tcp_client.readMessageSync() catch |err| {
             log.err("Failed to read client packet in login: {any}", .{ err });
             return err;
-        } orelse break;
-        log.debug("{x}", .{ packet.id });
+        };
         switch (this.state.load(.acquire)) {
             .handshake => {
-                log.info("handshake", .{});
+                log.debug("handshake", .{});
                 this.handleHandshakePacket(packet) catch |err| {
                     log.err("Failed to handle handshake state in login: {any}", .{ err });
                     return err;
                 };
             },
             .login => {
-                log.info("login", .{});
+                log.debug("login", .{});
                 this.handleLoginPacket(packet) catch |err| {
                     log.err("Failed to handle login state in login: {any}", .{ err });
                     return err;
                 };
             },
             .config => {
-                log.info("config", .{});
+                log.debug("config", .{});
                 this.handleConfigPacket(packet) catch |err| {
                     log.err("Failed to handle config state in login: {any}", .{ err });
                     return err;

@@ -11,7 +11,7 @@ data: []u8,
 pub fn read(reader: *std.Io.Reader) !Packet {
     const len: u32 = @intCast(try VarInt.read(reader));
     const id = try VarInt.readWithWidth(reader);
-    std.log.debug("len: {d}, id: {x:0>2}", .{ len, id.value });
+    std.log.debug("len: {d}, id: 0x{x:0>2}", .{ len, @as(u8, @intCast(id.value)) });
     const data = try reader.take(len - id.width);
     return .{
         .id = id.value,

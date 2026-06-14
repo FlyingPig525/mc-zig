@@ -17,6 +17,7 @@ clients: std.ArrayList(Client),
 main_thread: std.Thread.Id,
 curr_tick: atomic.Value(u64) = .init(0),
 running: atomic.Value(bool) = .init(true),
+after_tick: ?*const fn (server: *Server, tick_ns: i96) void = null,
 
 pub fn init(alloc: std.mem.Allocator, io: std.Io) !Server {
     return .{
@@ -43,6 +44,7 @@ pub fn start(this: *Server, address: std.Io.net.IpAddress) !void {
     log.info("Tcp server started", .{});
 
     while (true) {
+        const clock = std.Io.Clock.now(.boot, this.io);
         while (try this.tcp_server.pollAccept()) |tcp_client| {
             log.info("Client accepted", .{});
             try this.clients.append(this.alloc, .{
@@ -55,12 +57,14 @@ pub fn start(this: *Server, address: std.Io.net.IpAddress) !void {
         }
 
         try this.tick();
+        const dur = clock.untilNow(this.io, .boot);
+        if (this.after_tick) |after_tick| after_tick(this, dur.nanoseconds);
         try this.io.sleep(.fromMilliseconds(1000 / 20), .awake);
     }
 }
 
 fn handle_login(this: *Server, client: *Client, index: usize) void {
-    client.handleLogin() catch |err| {
+    client.handleConnection() catch |err| {
         log.err("Error in client login sequence: {any}", .{ err });
         client.kick();
         // client.deinit();

@@ -49,11 +49,11 @@ pub fn deinit(this: *TcpClient) void {
 }
 
 pub fn readMessage(this: *TcpClient) !?packets.Packet {
-    // _ = try std.posix.poll(@ptrCast(&this.poll), -1);
-//
-    // if (this.poll.revents & std.posix.POLL.IN != std.posix.POLL.IN) {
-        // return null;
-    // }
+    _ = try std.posix.poll(@ptrCast(&this.poll), 0);
+
+    if (this.poll.revents & std.posix.POLL.IN != std.posix.POLL.IN) {
+        return null;
+    }
 
     return try readMessageSync(this);
 }

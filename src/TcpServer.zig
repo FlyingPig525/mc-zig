@@ -44,8 +44,7 @@ pub fn start(this: *TcpServer, address: net.IpAddress) !void {
 /// tcp clients' allocations are freed once the TcpServer is deinitialized. All clients should always be deinitialized before calling
 /// this method
 pub fn pollAccept(this: *TcpServer) !?TcpClient {
-    std.log.debug("{d} {d}", .{ this.poll.revents, this.poll.events });
-    _ = try std.posix.poll(@alignCast(@ptrCast(&this.poll)), -1);
+    _ = try std.posix.poll(@alignCast(@ptrCast(&this.poll)), 0);
     if (this.poll.revents & std.posix.POLL.IN != std.posix.POLL.IN) {
         return null;
     }
