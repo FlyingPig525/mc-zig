@@ -31,6 +31,17 @@ pub fn build(b: *std.Build) void {
         }
     });
 
+    const registry = b.addModule("registry", .{
+        .root_source_file = b.path("src/registry/root.zig"),
+        .target = target,
+        .optimize = optimize,
+        .imports = &.{
+            .{ .name = "protocol", .module = protocol },
+            .{ .name = "data", .module = data },
+            .{ .name = "nbt", .module = nbt },
+        }
+    });
+
     const packets = b.addModule("packets", .{
         .root_source_file = b.path("src/packets/root.zig"),
         .target = target,
@@ -38,6 +49,8 @@ pub fn build(b: *std.Build) void {
         .imports = &.{
             .{ .name = "protocol", .module = protocol },
             .{ .name = "data", .module = data },
+            .{ .name = "nbt", .module = nbt },
+            .{ .name = "registry", .module = registry },
         },
     });
 
@@ -49,6 +62,8 @@ pub fn build(b: *std.Build) void {
             .{ .name = "protocol", .module = protocol },
             .{ .name = "packets", .module = packets },
             .{ .name = "data", .module = data },
+            .{ .name = "nbt", .module = nbt },
+            .{ .name = "registry", .module = registry },
         }
     });
 
@@ -80,13 +95,11 @@ pub fn build(b: *std.Build) void {
     const mod_tests = b.addTest(.{
         .root_module = mod,
     });
-
     const run_mod_tests = b.addRunArtifact(mod_tests);
 
     const exe_tests = b.addTest(.{
         .root_module = exe.root_module,
     });
-
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     const nbt_tests = b.addTest(.{
@@ -94,10 +107,16 @@ pub fn build(b: *std.Build) void {
     });
     const run_nbt_tests = b.addRunArtifact(nbt_tests);
 
+    const registry_tests = b.addTest(.{
+        .root_module = registry,
+    });
+    const run_registry_tests = b.addRunArtifact(registry_tests);
+
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_nbt_tests.step);
+    test_step.dependOn(&run_registry_tests.step);
 
     const gen_exe = b.addExecutable(.{
         .name = "gen",

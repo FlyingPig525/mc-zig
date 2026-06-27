@@ -1,4 +1,5 @@
 const std = @import("std");
+const protocol = @import("protocol");
 
 const Kick = @This();
 
@@ -7,5 +8,5 @@ pub const id = 0x02;
 message: []const u8,
 
 pub fn write(this: Kick, writer: *std.Io.Writer) !void {
-    try writer.writeAll(this.message);
+    try protocol.String.write(this.message, writer);
 }

@@ -3,11 +3,20 @@ pub const std = @import("std");
 const Nbt = @This();
 
 name: ?[]const u8,
-root: []Tag,
-arena: std.heap.ArenaAllocator,
+root: []const Tag,
+arena: ?std.heap.ArenaAllocator = null,
+
+pub fn init(tags: []const Tag, name: ?[]const u8) Nbt {
+    return .{
+        .name = name,
+        .root = tags,
+    };
+}
 
 pub fn deinit(this: Nbt) void {
-    this.arena.deinit();
+    if (this.arena) |arena| {
+        arena.deinit();
+    }
 }
 
 const ParseError = error { InvalidRootTag, UnexpectedEnd, ReadFailed, EndOfStream, OutOfMemory };
@@ -172,13 +181,14 @@ pub fn parseType(reader: *std.Io.Reader, id: TagType, alloc: std.mem.Allocator, 
                 .value = buf,
             }};
         },
+        else => unreachable,
     }
 }
 
 pub const WriteError = error { WriteFailed };
 
-pub fn write(this: *Nbt, writer: *std.Io.Writer) WriteError!void {
-    const comp = Tag{ .compound = .{ .name = this.name, .value = this.root }};
+pub fn write(this: Nbt, writer: *std.Io.Writer) WriteError!void {
+    const comp = Tag{ .compound = .{ .name = this.name, .value = this.root } };
     try comp.write(writer, this.name != null);
 }
 
@@ -186,6 +196,9 @@ pub fn dump(this: Nbt, writer: *std.Io.Writer) !void {
     try writer.print("Compound({?s})\n", .{ this.name });
     for (this.root) |tag| {
         try tag.dumpIndent(writer, 1);
+    }
+    if (this.root[this.root.len - 1] != .end) {
+        try writer.print("End({?s})\n", .{ this.name });
     }
 }
 
@@ -203,6 +216,7 @@ pub const TagType = enum(u8) {
     compound,
     int_array,
     long_array,
+    no_encode,
 };
 
 pub fn Named(comptime T: type) type {
@@ -219,7 +233,7 @@ pub const List = struct {
 
 pub const Tag = union(TagType) {
     /// TAG_End is 0
-    end: void,
+    end,
     byte: Named(i8),
     short: Named(i16),
     int: Named(i32),
@@ -239,16 +253,20 @@ pub const Tag = union(TagType) {
     int_array: Named([]const i32),
     /// Length prefixed (i32)
     long_array: Named([]const i64),
+    /// An empty type that will not be encoded or dumped in written nbt
+    no_encode,
 
     pub fn write(tag: Tag, writer: *std.Io.Writer, named: bool) WriteError!void {
+        if (tag == .no_encode) return;
         try writer.writeByte(@intFromEnum(tag));
         try tag.writeNoType(writer, named);
     }
 
     pub fn writeNoType(tag: Tag, writer: *std.Io.Writer, named: bool) WriteError!void {
+        if (tag == .no_encode) return;
         if (tag != .end and named) {
             switch (tag) {
-                .end => unreachable,
+                .end, .no_encode => unreachable,
                 inline else => |t| {
                     if (t.name) |n| {
                         try writer.writeInt(u16, @intCast(n.len), .big);
@@ -314,14 +332,17 @@ pub const Tag = union(TagType) {
                     try writer.writeInt(i64, long, .big);
                 }
             },
+            else => unreachable,
         }
     }
 
     pub fn dump(this: Tag, writer: *std.Io.Writer) !void {
+        if (this == .no_encode) return;
         try dumpIndent(this, writer, 0);
     }
 
     pub fn dumpIndent(this: Tag, writer: *std.Io.Writer, indent: u8) !void {
+        if (this == .no_encode) return;
         for (0..indent) |_| {
             try writer.print("  ", .{});
         }
@@ -364,7 +385,9 @@ pub const Tag = union(TagType) {
                 for (0..indent) |_| {
                     try writer.print("  ", .{});
                 }
-                try writer.print("End({s})\n", .{ this.compound.name orelse "" });
+                if (this.compound.value[this.compound.value.len - 1] != .end) {
+                    try writer.print("End({s})\n", .{ this.compound.name orelse "" });
+                }
             },
             .int_array => {
                 try writer.print("IntArray({?s}) = {any}\n", .{ this.int_array.name, this.int_array.value });
@@ -374,7 +397,8 @@ pub const Tag = union(TagType) {
             },
             .end => {
                 try writer.print("End\n", .{});
-            }
+            },
+            else => unreachable,
         }
     }
 };

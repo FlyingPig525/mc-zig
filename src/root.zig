@@ -7,3 +7,5 @@ pub const Client    = @import("Client.zig");
 
 pub const protocol  = @import("protocol");
 pub const packets   = @import("packets");
+pub const nbt       = @import("nbt");
+pub const registry  = @import("registry");

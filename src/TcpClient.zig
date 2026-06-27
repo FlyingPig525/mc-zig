@@ -32,8 +32,8 @@ pub fn init(stream: net.Stream, io: std.Io, alloc: std.mem.Allocator) !TcpClient
             .revents = 0,
         },
     };
-    client.read_buf = try alloc.alloc(u8, packets.Packet.max_packet_length);
-    client.write_buf = try alloc.alloc(u8, packets.Packet.max_packet_length);
+    client.read_buf = try alloc.alloc(u8, protocol.max_packet_length);
+    client.write_buf = try alloc.alloc(u8, protocol.max_packet_length);
     client.reader = stream.reader(io, client.read_buf);
     client.writer = stream.writer(io, client.write_buf);
     return client;
@@ -64,6 +64,6 @@ pub fn readMessageSync(this: *TcpClient) !packets.Packet {
 
 pub fn writeMessage(this: *TcpClient, packet: anytype) !void {
     try packets.Packet.write(&this.writer.interface, packet);
-    std.log.debug("{x}", .{ this.writer.interface.buffered() });
+    // std.log.debug("{x}", .{ this.writer.interface.buffered() });
     try this.writer.interface.flush();
 }

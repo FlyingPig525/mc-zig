@@ -1,9 +1,9 @@
 const std = @import("std");
 
-const VarInt = @import("protocol").VarInt;
+const protocol = @import("protocol");
+const VarInt = protocol.VarInt;
 
 const Packet = @This();
-pub const max_packet_length = 2097151;
 
 id: i32,
 data: []u8,
@@ -27,7 +27,7 @@ pub fn into(this: Packet, comptime T: type) !T {
 }
 
 pub fn write(writer: *std.Io.Writer, packet: anytype) !void {
-    var temp_buf: [max_packet_length]u8 = undefined;
+    var temp_buf: [protocol.max_packet_length]u8 = undefined;
     var temp_writer = std.Io.Writer.fixed(&temp_buf);
     try VarInt.write(@TypeOf(packet).id, &temp_writer);
     try packet.write(&temp_writer);

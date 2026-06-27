@@ -1,19 +1,19 @@
 const std = @import("std");
 
-const required_registries: []const []const u8 = .{
-    "damage_type",
+const required_registries: [1]type = .{
+    // @import("DamageType.zig"),
     // defined by user
-    "dimension_type",
-    "painting_variant",
+    // "dimension_type",
+    // "painting_variant",
     // only plains
-    "worldgen/biome",
-    "cat_variant",
-    "chicken_variant",
-    "cow_variant",
-    "frog_variant",
-    "pig_variant",
-    "wolf_variant",
-    "wolf_sound_variant",
+    // "worldgen/biome",
+    @import("Variants.zig"),
+    // "chicken_variant",
+    // "cow_variant",
+    // "frog_variant",
+    // "pig_variant",
+    // "wolf_variant",
+    // "wolf_sound_variant",
 };
 
 pub fn main(init: std.process.Init) !void {
@@ -39,6 +39,12 @@ pub fn main(init: std.process.Init) !void {
     } else {
         std.log.info("Hash is the same", .{});
         dir = try std.Io.Dir.cwd().openDir(io, "extracted", .{});
+    }
+    const minecraft = try (try dir.openDir(io, "data", .{})).openDir(io, "minecraft", .{});
+    inline for (required_registries) |reg| {
+        reg.create(minecraft, io, gpa) catch |e| {
+            std.log.err("Error processing registry: {s} ; err: {any}", .{ @typeName(reg), e });
+        };
     }
 }
 
@@ -99,7 +105,7 @@ fn needsExtraction(file: std.Io.File, io: std.Io) !bool {
 
     var out_buf: [Md5.digest_length]u8 = undefined;
     new_hash.final(&out_buf);
-    std.log.info("old: {any}, new: {any}", .{ &old_buf, &out_buf });
+    // std.log.info("old: {any}, new: {any}", .{ &old_buf, &out_buf });
     const res = std.mem.eql(u8, &old_buf, &out_buf);
     if (!res) {
         try std.Io.Dir.cwd().deleteFile(io, hash_file_name);

@@ -36,7 +36,7 @@ pub fn write(value: i32, writer: *std.Io.Writer) !void {
     // zig has no >>>= operator, so to emulate the behavior, value must be unsigned
     var u_value: u32 = @bitCast(value);
     while (true) {
-        if ((u_value & ~segment_bits) == 0) {
+        if ((u_value & ~@as(u32, @intCast(segment_bits))) == 0) {
             try writer.writeByte(@intCast(u_value));
             return;
         }

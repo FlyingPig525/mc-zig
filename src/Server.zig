@@ -5,6 +5,7 @@ const World = @import("World.zig");
 const TcpServer = @import("TcpServer.zig");
 const TcpClient = @import("TcpClient.zig");
 const Client = @import("Client.zig");
+const reg = @import("registry");
 
 const Server = @This();
 const log = std.log.scoped(.server);
@@ -20,7 +21,7 @@ running: atomic.Value(bool) = .init(true),
 after_tick: ?*const fn (server: *Server, tick_ns: i96) void = null,
 
 pub fn init(alloc: std.mem.Allocator, io: std.Io) !Server {
-    return .{
+    const s: Server = .{
         .io = io,
         .alloc = alloc,
         .tcp_server = try .init(alloc, io),
@@ -28,12 +29,14 @@ pub fn init(alloc: std.mem.Allocator, io: std.Io) !Server {
         .clients = .empty,
         .main_thread = std.Thread.getCurrentId(),
     };
+    return s;
 }
 
 pub fn deinit(this: *Server) void {
     for (0..this.clients.items.len) |i| {
-        this.clients.items[i].deinit();
+        this.clients.items[i].deinit(this.alloc);
     }
+    this.clients.deinit(this.alloc);
     this.tcp_server.deinit();
 }
 
@@ -64,9 +67,12 @@ pub fn start(this: *Server, address: std.Io.net.IpAddress) !void {
 }
 
 fn handle_login(this: *Server, client: *Client, index: usize) void {
-    client.handleConnection() catch |err| {
+    client.handleConnection(this.alloc) catch |err| {
         log.err("Error in client login sequence: {any}", .{ err });
-        client.kick();
+        if (!client.kicked) {
+            client.kick("Internal server error");
+        }
+        client.deinit(this.alloc);
         // client.deinit();
         _ = this.clients.swapRemove(index);
     };
