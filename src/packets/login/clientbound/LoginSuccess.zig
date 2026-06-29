@@ -1,5 +1,4 @@
 const std = @import("std");
-const protocol = @import("../../root.zig");
 const data = @import("data");
 
 const LoginSuccess = @This();

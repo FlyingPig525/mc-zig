@@ -50,11 +50,7 @@ pub fn start(this: *Server, address: std.Io.net.IpAddress) !void {
         const clock = std.Io.Clock.now(.boot, this.io);
         while (try this.tcp_server.pollAccept()) |tcp_client| {
             log.info("Client accepted", .{});
-            try this.clients.append(this.alloc, .{
-                .state = .init(.handshake),
-                .tcp_client = tcp_client,
-                .server = this,
-            });
+            try this.clients.append(this.alloc, .init(tcp_client, this));
             const client = &this.clients.items[this.clients.items.len - 1];
             _ = try this.io.concurrent(handle_login, .{ this, client, this.clients.items.len - 1 });
         }

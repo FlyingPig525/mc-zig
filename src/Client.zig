@@ -11,6 +11,7 @@ const log = std.log.scoped(.client);
 tcp_client: TcpClient,
 server: *Server,
 state: std.atomic.Value(ConnectionState),
+id: u16,
 known_packs: std.array_hash_map.String([]const u8) = .empty,
 kicked: bool = false,
 
@@ -19,6 +20,7 @@ pub fn init(tcp_client: TcpClient, server: *Server) Client {
         .tcp_client = tcp_client,
         .state = .init(.handshake),
         .server = server,
+        .id = @intCast(server.clients.items.len),
     };
 }
 
@@ -68,7 +70,7 @@ pub fn kick(this: *Client, message: []const u8) void {
 
 pub fn sendPacket(this: *Client, packet: anytype) !void {
     try this.tcp_client.writeMessage(packet);
-} 
+}
 
 pub fn handleConnection(this: *Client, alloc: std.mem.Allocator) !void {
     while(this.state.load(.acquire) != .play) {
@@ -188,6 +190,17 @@ fn handleConfigPacket(this: *Client, packet: Packet, alloc: std.mem.Allocator) !
         },
         serverbound.AcknowledgeFinish.id => {
             this.state.store(.play, .release);
+            try this.sendPacket(packets.play.client.Login{
+                .player_id = this.id,
+                .dimension_names = &.{
+                    "minecraft:overworld",
+                },
+                .dimension_name = "minecraft:overworld",
+                .dimension_id = 0,
+            });
+            try this.sendPacket(packets.play.client.GameEvent{
+                .data = .start_waiting_for_level_chunks,
+            });
         },
         else => {
             log.warn("unknown packet id: {x}", .{ packet.id });
