@@ -22,6 +22,7 @@ pub fn ManagedClient(comptime Manager: type) type {
         known_packs: std.array_hash_map.String([]const u8) = .empty,
         kicked: bool = false,
         recent_teleport_id: ?i32 = null,
+        last_keep_alive: i64 = 0,
         info: UserInfo = .{
             .username = "",
             .uuid = 0,
@@ -288,14 +289,16 @@ pub fn ManagedClient(comptime Manager: type) type {
 
         pub fn tick(this: *Client) !void {
             const curr_tick = this.server.curr_tick.load(.acquire);
+
+            if (this.last_keep_alive + 400 <= curr_tick) {
+                this.kick("Timed out");
+                return error.Kicked;
+            }
+
             while (try this.tcp_client.readMessage()) |raw| {
                 switch (raw.id) {
                     packets.play.server.KeepAlive.id => {
-                        const pack = try raw.into(packets.play.server.KeepAlive);
-                        if (pack.in_id < curr_tick - 400) {
-                            this.kick("Timed out");
-                            return error.Kicked;
-                        }
+                        this.last_keep_alive = curr_tick;
                     },
                     else => {
                         // log.warn("unknown packet id in tick: {x}", .{ raw.id });

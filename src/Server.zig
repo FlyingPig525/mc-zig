@@ -124,14 +124,17 @@ pub fn ManagedServer(comptime Manager: type) type {
         fn tick(this: *Server) !void {
             const curr_tick = this.curr_tick.load(.acquire) + 1;
             this.curr_tick.store(curr_tick, .release);
-
+            const send_keep_alive = curr_tick - 280 >= this.last_keep_alive;
+            if (send_keep_alive) {
+                this.last_keep_alive = curr_tick;
+            }
             for (this.clients.items, 0..) |client, i| {
                 if (client.kicked) continue;
                 if (client.state.load(.acquire) != .play) continue;
-                if (curr_tick - 280 >= this.last_keep_alive) {
+                if (send_keep_alive) {
                     client.sendPacket(packets.play.client.KeepAlive{
                         .out_id = curr_tick,
-                    }) catch |err| {
+                        }) catch |err| {
                         log.err("Failed to send keepalive packet. err: {any}", .{ err });
                         printStacktrace(this.alloc);
                         this.disconnect(client, .{ .index = i, .message = "Internal server error" });

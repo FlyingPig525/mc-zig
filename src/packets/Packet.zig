@@ -21,7 +21,6 @@ pub fn read(reader: *std.Io.Reader) !Packet {
 pub fn into(this: Packet, comptime T: type) !T {
     if (this.id != T.id) return error.InvalidPacketId;
     var reader = std.Io.Reader.fixed(this.data);
-    std.log.debug("{x}", .{ this.data });
     return try T.read(&reader);
 }
 
