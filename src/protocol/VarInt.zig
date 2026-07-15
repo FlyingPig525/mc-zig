@@ -33,6 +33,10 @@ pub fn readWithWidth(reader: *std.Io.Reader) !VarInt {
 }
 
 pub fn write(value: i32, writer: *std.Io.Writer) !void {
+    if (value == 0) {
+        try writer.writeByte(0);
+        return;
+    }
     // zig has no >>>= operator, so to emulate the behavior, value must be unsigned
     var u_value: u32 = @bitCast(value);
     while (true) {

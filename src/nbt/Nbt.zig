@@ -228,7 +228,7 @@ pub fn Named(comptime T: type) type {
 
 pub const List = struct {
     type: TagType,
-    list: []Tag,
+    list: []const Tag,
 };
 
 pub const Tag = union(TagType) {
@@ -241,7 +241,7 @@ pub const Tag = union(TagType) {
     float: Named(f32),
     double: Named(f64),
     /// Length prefixed (i32)
-    byte_array: Named([]i8),
+    byte_array: Named([]const i8),
     /// length prefixed (u16)
     string: Named([]const u8),
     /// Prefixed with the `Tag` type it contains (enum tag u8), then length prefixed (i32). If length is 0 the type can be anything

@@ -1,4 +1,9 @@
 pub const GameProfile = @import("GameProfile.zig");
 pub const Pack = @import("Pack.zig");
 pub const Identifier = @import("Identifier.zig");
-pub const Position = @import("Position.zig").Position;
+pub const Position = @import("Position.zig");
+pub const Block = @import("Block.zig");
+pub const Biome = @import("Biome.zig");
+pub const TwoDimensionalList = @import("TwoDimensionalList.zig").TwoDimensionalList;
+pub const TeleportFlags = @import("teleport_flags.zig").TeleportFlags;
+pub const PlayerAction = @import("player_action.zig").PlayerAction;

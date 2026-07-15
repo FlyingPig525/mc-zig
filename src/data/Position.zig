@@ -1,15 +1,27 @@
-const std = @import("std");
+const Position = @This();
 
-pub const Position = packed struct {
-    x: i26,
-    z: i26,
-    y: i12,
+x: f64,
+y: f64,
+z: f64,
+yaw: f32 = 0,
+pitch: f32 = 0,
 
-    pub fn write(this: Position, writer: *std.Io.Writer) !void {
-        try writer.writeInt(u64, @bitCast(this), .big);
-    }
+pub fn add(this: Position, other: Position) Position {
+    return .{
+        .x = this.x + other.x,
+        .y = this.y + other.y,
+        .z = this.z + other.z,
+        .yaw = this.yaw + other.yaw,
+        .pitch = this.pitch + other.pitch,
+    };
+}
 
-    pub fn read(reader: *std.Io.Reader) !Position {
-        return @bitCast(try reader.takeInt(u64, .big));
-    }
-};
+pub fn sub(this: Position, other: Position) Position {
+    return .{
+        .x = this.x - other.x,
+        .y = this.y - other.y,
+        .z = this.z - other.z,
+        .yaw = this.yaw - other.yaw,
+        .pitch = this.pitch - other.pitch,
+    };
+}

@@ -2,9 +2,8 @@ const std = @import("std");
 const protocol = @import("protocol");
 const data = @import("data");
 
-const Login = @This();
-
 pub const id = 0x30;
+const Login = @This();
 
 player_id: i32,
 hardcore: bool = false,
@@ -27,8 +26,8 @@ sea_level: i32 = 0,
 secure_chat: bool = false,
 
 pub const DeathLocation = struct {
-    dimension_name: []u8,
-    location: data.Position,
+    dimension_name: []const u8,
+    location: PackedPosition,
 };
 
 pub fn write(this: Login, writer: *std.Io.Writer) !void {
@@ -67,10 +66,21 @@ pub const GameMode = enum(u8) {
     adventure = 2,
     spectator = 3,
 };
+
 pub const PreviousGameMode = enum(i8) {
     undef = -1,
     survival = 0,
     creative = 1,
     adventure = 2,
     spectator = 3,
+};
+
+pub const PackedPosition = packed struct {
+    x: i26,
+    z: i26,
+    y: i12,
+
+    pub fn write(this: PackedPosition, writer: *std.Io.Writer) !void {
+        try writer.writeInt(u64, @bitCast(this), .big);
+    }
 };

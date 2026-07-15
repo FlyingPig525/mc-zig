@@ -16,7 +16,6 @@ pub fn write(this: RegistryData, writer: *std.Io.Writer) !void {
         try protocol.String.write(entry.name, writer);
         try protocol.Boolean.write(this.with_nbt and entry.nbt != null, writer);
         if (entry.nbt != null and this.with_nbt) {
-            std.debug.print("nbt\n", .{});
             try entry.nbt.?.write(writer);
         }
     }
