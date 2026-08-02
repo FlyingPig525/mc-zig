@@ -2,10 +2,10 @@ const std = @import("std");
 const TcpClient = @import("TcpClient.zig");
 const Server = @import("Server.zig");
 const World = @import("World.zig");
-const protocol = @import("protocol");
-const packets = @import("packets");
+const protocol = @import("root.zig").protocol;
+const packets = @import("root.zig").packets;
 const Packet = packets.Packet;
-const data = @import("data");
+const data = @import("root.zig").data;
 
 const log = std.log.scoped(.client);
 
@@ -58,6 +58,7 @@ pub fn ManagedClient(comptime Manager: type) type {
             status,
             login,
             config,
+            play_setup,
             play,
         };
 
@@ -96,7 +97,7 @@ pub fn ManagedClient(comptime Manager: type) type {
         }
 
         pub fn handleConnection(this: *Client, alloc: std.mem.Allocator) !void {
-            while(this.state.load(.acquire) != .play) {
+            while(this.state.load(.acquire) != .play_setup) {
                 log.info("Reading message", .{});
                 const packet = this.tcp_client.readMessageSync() catch |err| {
                     log.err("Failed to read client packet in login: {any}", .{ err });
@@ -127,7 +128,7 @@ pub fn ManagedClient(comptime Manager: type) type {
                     .status => {
                         return;
                     },
-                    .play => {
+                    else => {
                         return;
                     }
                 }
@@ -151,18 +152,24 @@ pub fn ManagedClient(comptime Manager: type) type {
                 },
                 serverbound.KnownPacks.id => {
                     const packs = try packet.into(serverbound.KnownPacks);
+                    var known_packs: std.array_hash_map.String([]const u8) = .empty;
+                    defer {
+                        var iter = known_packs.iterator();
+                        while (iter.next()) |e| {
+                            alloc.free(e.key_ptr.*);
+                        }
+                        known_packs.deinit(alloc);
+                    }
                     for (packs.packs) |pack| {
                         log.info("pack: {s}:{s} v{s}", .{ pack.namespace, pack.id, pack.version });
-                        try this.known_packs.put(alloc, try std.mem.concat(alloc, u8, &.{ pack.namespace, ":", pack.id }), pack.version);
+                        try known_packs.put(alloc, try std.mem.concat(alloc, u8, &.{ pack.namespace, ":", pack.id }), pack.version);
                     }
-                    // for some reason, when updating to 26.2 the client isnt sending minecraft:core in its known packs
-                    // so we assume client is the same version as server TODO: dont do this
                     // im not updating
-                    if (!this.known_packs.contains("minecraft:core")) {
+                    if (!known_packs.contains("minecraft:core")) {
                         this.kick("Missing pack minecraft:core");
                         return error.Kicked;
                     }
-                    const include_nbt = !std.mem.eql(u8, this.known_packs.get("minecraft:core").?, "26.2");
+                    const include_nbt = !std.mem.eql(u8, known_packs.get("minecraft:core").?, "1.21.10");
                     try this.sendPacket(clientbound.RegistryData{
                         .registry = .damage_type,
                         .with_nbt = include_nbt,
@@ -230,7 +237,7 @@ pub fn ManagedClient(comptime Manager: type) type {
                     try this.sendPacket(clientbound.FinishConfiguration{});
                 },
                 serverbound.AcknowledgeFinish.id => {
-                    this.state.store(.play, .release);
+                    this.state.store(.play_setup, .release);
                 },
                 else => {
                     log.warn("unknown packet id in config: {x}", .{ packet.id });
@@ -292,6 +299,7 @@ pub fn ManagedClient(comptime Manager: type) type {
 
             if (this.last_keep_alive + 400 <= curr_tick) {
                 this.kick("Timed out");
+                log.err("Client timed out", .{});
                 return error.Kicked;
             }
 
@@ -313,24 +321,23 @@ pub fn ManagedClient(comptime Manager: type) type {
 
         pub fn teleportVerbose(
             this: *Client,
-            x: f64, y: f64, z: f64,
+            pos: data.Position,
             vel_x: f64, vel_y: f64, vel_z: f64,
-            yaw: f32, pitch: f32,
             flags: data.TeleportFlags
         ) !void {
             const id = this.server.random.interface().int(i32);
             this.recent_teleport_id = id;
             try this.sendPacket(packets.play.client.SynchronizePlayerPosition{
-                .x = x, .y = y, .z = z,
+                .x = pos.x, .y = pos.y, .z = pos.z,
                 .vel_x = vel_x, .vel_y = vel_y, .vel_z = vel_z,
-                .yaw = yaw, .pitch = pitch,
+                .yaw = pos.yaw, .pitch = pos.pitch,
                 .flags = flags,
                 .teleport_id = id,
             });
         }
 
         pub fn teleportPos(this: *Client, x: f64, y: f64, z: f64) !void {
-            try this.teleportVerbose(x, y, z, 0, 0, 0, 0, 0, .abs_pos);
+            try this.teleportVerbose(.{ .x = x, .y = y, .z = z }, 0, 0, 0, .abs_pos);
         }
     };
 }

@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const protocol = @import("protocol");
+const protocol = @import("../root.zig").protocol;
 const VarInt = protocol.VarInt;
 
 const Packet = @This();

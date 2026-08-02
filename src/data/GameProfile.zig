@@ -1,4 +1,4 @@
-const protocol = @import("protocol");
+const protocol = @import("../root.zig").protocol;
 const std = @import("std");
 
 const GameProfile = @This();

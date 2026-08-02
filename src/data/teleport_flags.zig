@@ -25,6 +25,8 @@ pub const TeleportFlags = packed struct {
         .relative_vel_z = false,
     };
 
+    pub const abs: TeleportFlags = abs_pos.plus(abs_rot).plus(abs_rot);
+
     pub fn plus(this: TeleportFlags, other: TeleportFlags) TeleportFlags {
         return .{
             .relative_x = this.relative_x or other.relative_x,

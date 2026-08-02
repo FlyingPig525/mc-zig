@@ -1,5 +1,5 @@
 const std = @import("std");
-const protocol = @import("protocol");
+const protocol = @import("../../../root.zig").protocol;
 
 const ClientInformation = @This();
 pub const id = 0x00;

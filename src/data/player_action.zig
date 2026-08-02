@@ -1,5 +1,5 @@
 const std = @import("std");
-const protocol = @import("protocol");
+const protocol = @import("root").protocol;
 
 const GameProfile = @import("GameProfile.zig");
 

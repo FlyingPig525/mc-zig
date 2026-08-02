@@ -18,3 +18,6 @@ pub fn create(minecraft: std.Io.Dir, io: std.Io, _: std.mem.Allocator) !void {
     // try nfi.create(minecraft, io, "trim_material");
     // try nfi.create(minecraft, io, "zombie_nautilus_variant");
 }
+
+
+pub const variant = true;

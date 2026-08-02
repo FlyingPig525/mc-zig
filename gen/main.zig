@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const required_registries: [1]type = .{
+const required_registries = [_]type{
     // @import("DamageType.zig"),
     // defined by user
     // "dimension_type",
@@ -19,6 +19,14 @@ const required_registries: [1]type = .{
 pub fn main(init: std.process.Init) !void {
     const io = init.io;
     const gpa = init.gpa;
+    var arg_iter = try init.minimal.args.iterateAllocator(gpa);
+    defer arg_iter.deinit();
+    var generate_variants = false;
+    while (arg_iter.next()) |arg| {
+        if (std.mem.eql(u8, "variant", arg[0..])) {
+            generate_variants = true;
+        }
+    }
 
     std.log.info("Opening jar", .{});
     const jar = std.Io.Dir.cwd().openFile(init.io, "game.jar", .{}) catch |err| switch (err) {
@@ -41,45 +49,51 @@ pub fn main(init: std.process.Init) !void {
         dir = try std.Io.Dir.cwd().openDir(io, "extracted", .{});
     }
     const minecraft = try (try dir.openDir(io, "data", .{})).openDir(io, "minecraft", .{});
+
     inline for (required_registries) |reg| {
-        reg.create(minecraft, io, gpa) catch |e| {
-            std.log.err("Error processing registry: {s} ; err: {any}", .{ @typeName(reg), e });
-        };
+        if (@hasDecl(reg, "variant")) {
+            if (generate_variants) reg.create(minecraft, io, gpa) catch |e| regErr(reg, e);
+            continue;
+        }
+        reg.create(minecraft, io, gpa) catch |e| regErr(reg, e);
     }
+}
+fn regErr(comptime reg: type, e: anyerror) void {
+    std.log.err("Error processing registry: {s} ; err: {any}", .{ @typeName(reg), e });
 }
 
 fn extract(gpa: std.mem.Allocator, jar: std.Io.File, io: std.Io) !std.Io.Dir {
     const buf = try gpa.alloc(u8, @intCast(try jar.length(io)));
     defer gpa.free(buf);
-    var reader = jar.reader(io, buf);
     std.log.info("Trying to create extracted dir", .{});
 
     std.Io.Dir.cwd().deleteTree(io, "extracted") catch {};
     try std.Io.Dir.cwd().createDirPath(io, "extracted");
 
-    std.log.info("Extracting jar into dir", .{});
-    var iter = try std.zip.Iterator.init(&reader);
-    var progress = std.Progress.start(io, .{
-        .root_name = "",
-        .estimated_total_items = iter.cd_record_count,
+    std.log.info("Running datagen in jar", .{});
+
+    var filename_buf: [std.Io.Dir.max_path_bytes]u8 = undefined;
+    const path_end = try jar.realPath(io, &filename_buf);
+
+    var child = try std.process.spawn(io, .{
+        .argv = &.{ "java", "-DbundlerMainClass=net.minecraft.data.Main", "-jar", filename_buf[0..path_end], "--reports", "--server", "--output", "extracted/" },
+        .create_no_window = true,
     });
-
-    const dest = try std.Io.Dir.cwd().openDir(io, "extracted", .{});
-    var diagnostics = std.zip.Diagnostics{
-        .allocator = gpa
-    };
-
-    var filename_buf: [std.fs.max_path_bytes]u8 = undefined;
-    while (try iter.next()) |entry| {
-        try diagnostics.nextFilename(filename_buf[0..entry.filename_len]);
-
-        try entry.extract(&reader, .{}, &filename_buf, dest);
-        progress.setName(filename_buf[0..entry.filename_len]);
-        progress.completeOne();
+    const term = try child.wait(io);
+    if (term.exited != 0) {
+        std.log.err("Error in child datagen process. Exit code: {x:0>2}", .{ term.exited });
+    } else {
+        std.log.info("Child datagen process exited successfully", .{});
     }
-    progress.end();
+
+    std.log.info("Cleaning up", .{});
+    std.Io.Dir.cwd().deleteTree(io, "libraries") catch {};
+    std.Io.Dir.cwd().deleteTree(io, "versions") catch {};
+    std.Io.Dir.cwd().deleteTree(io, "logs") catch {};
+    std.log.info("Cleaned up", .{});
+
     std.log.info("Extracted successfully", .{});
-    return dest;
+    return std.Io.Dir.cwd().openDir(io, "extracted", .{});
 }
 
 const hash_file_name = "hash.md5";

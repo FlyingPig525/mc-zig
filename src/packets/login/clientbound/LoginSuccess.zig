@@ -1,6 +1,6 @@
 const std = @import("std");
-const data = @import("data");
-const protocol = @import("protocol");
+const data = @import("../../../root.zig").data;
+const protocol = @import("../../../root.zig").protocol;
 
 const LoginSuccess = @This();
 pub const id = 0x02;

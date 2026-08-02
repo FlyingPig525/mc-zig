@@ -29,22 +29,21 @@ pub const SingleValued = struct {
     }
 };
 
-pub const Indirect = struct {
-
-};
+pub const Indirect = struct {};
 
 pub const Direct = struct {
     entries: []const u32,
 
     pub const bits_per_entry: u64 = 15;
-    pub const entries_per_long = 64 / bits_per_entry;
-    pub const entry_mask: u64 = (1 << 15) - 1;
+    pub const entries_per_long = @divFloor(64, bits_per_entry);
+    pub const entry_mask: u64 = 0b111111111111111;
 
 
     pub fn write(this: Direct, writer: *std.Io.Writer) !void {
         try writer.writeByte(bits_per_entry);
         // wiki implementation
         const num_longs = (this.entries.len + entries_per_long - 1) / entries_per_long;
+        // std.log.debug("num: {d}", .{ num_longs });
         for (0..num_longs) |long_index| {
             var long: u64 = 0;
             for (0..entries_per_long) |i| {

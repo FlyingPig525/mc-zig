@@ -1,6 +1,6 @@
 const std = @import("std");
-const protocol = @import("protocol");
-const Flags = @import("data").TeleportFlags;
+const protocol = @import("../../../root.zig").protocol;
+const Flags = @import("../../../root.zig").data.TeleportFlags;
 
 pub const id = 0x46;
 const SynchronizePlayerPosition = @This();

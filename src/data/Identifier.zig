@@ -7,11 +7,16 @@ path: []const u8,
 
 pub const ParseError = error { IllegalPath, IllegalNamespace };
 
+pub fn eql(this: Identifier, other: Identifier) bool {
+    return std.mem.eql(u8, this.namespace, other.namespace) and std.mem.eql(u8, this.path, other.path);
+}
+
 pub fn parse(str: []const u8) ParseError!Identifier {
     const split = std.mem.find(u8, str, ":");
     // the entirety of str is the path
     if (split == null or split == 0) {
-        if (!legalPath(str)) return ParseError.IllegalPath;
+        const slice = if (split != null) str[1..] else str;
+        if (!legalPath(slice)) return ParseError.IllegalPath;
         return .{
             .namespace = "minecraft",
             .path = str,

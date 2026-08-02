@@ -3,8 +3,8 @@ const net = std.Io.net;
 const atomic = std.atomic;
 
 const TcpServer = @import("TcpServer.zig");
-const protocol = @import("protocol");
-const packets = @import("packets");
+const protocol = @import("root.zig").protocol;
+const packets = @import("root.zig").packets;
 
 const TcpClient = @This();
 

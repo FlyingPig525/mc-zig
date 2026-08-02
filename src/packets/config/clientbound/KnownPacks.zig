@@ -1,6 +1,6 @@
 const std = @import("std");
-const protocol = @import("protocol");
-const data = @import("data");
+const protocol = @import("../../../root.zig").protocol;
+const data = @import("../../../root.zig").data;
 
 const KnownPacks = @This();
 pub const id = 0x0e;

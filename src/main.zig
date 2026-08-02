@@ -6,24 +6,26 @@ const Server = mc.Server.ManagedServer(Manager);
 const Client = mc.Client.ManagedClient(Manager);
 const World = mc.World.ManagedWorld(Manager);
 
+const blocks = mc.data.Block.blocks;
+const event = mc.Event(Manager);
+
 const Manager = struct {
     default_world: World,
     gpa: std.mem.Allocator,
 
-    pub fn onConfigureFinish(this: *Manager, server: *Server, client: *Client) !void {
-        _ = server;
-        try this.default_world.addClient(client, this.gpa);
-        var data: [24]mc.packets.play.client.ChunkWithLight.PacketSection = undefined;
-        for (0..data.len) |i| {
-            data[i] = .{
-                .block_count = 0,
-                .fluid_count = 0,
-                .block_states = .{ .single_valued = .{ .value = 0 } },
-                .biomes = .{ .single_valued = .{ .value = 0 } },
-            };
+    pub fn onConfigureFinish(this: *Manager, server: *Server, _: *Client, e: *event.ConfigurationFinish) !void {
+        try this.default_world.setBlock(this.gpa, 0, 300, 0, blocks.acacia_button.block(this.gpa));
+        std.log.debug("{d}", .{ try blocks.cobblestone.block(this.gpa).state() });
+        const chunk = try this.default_world.getChunkGen(this.gpa, 1, 1);
+        for (chunk.sections) |*sec| {
+            try sec.fill(blocks.cobblestone.block(this.gpa), this.gpa);
         }
-        try client.teleportPos(0, 364, 0);
-
+        try this.default_world.fillChunk(this.gpa, 1, 1, blocks.cobblestone.block(this.gpa));
+        _ = server;
+        e.world = &this.default_world;
+        e.spawn_position = .{ .x = 0, .y = 301, .z = 0 };
+        const blk = try this.default_world.getBlock(this.gpa, 0, 300, 0);
+        std.log.info("y300 {d}", .{ try blk.state() });
         // try client.sendPacket(mc.packets.play.client.PlayerInfoUpdate{
             // .uuid = client.uuid,
             // .actions = &.{
@@ -34,58 +36,58 @@ const Manager = struct {
             // }
         // });
 
-        try client.sendPacket(mc.packets.play.client.SetCenterChunk{
-            .x = 0,
-            .z = 0,
-        });
-        try client.sendPacket(mc.packets.play.client.GameEvent{
-            .data = .start_waiting_for_level_chunks,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 0,
-            .z = 0,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 1,
-            .z = 0,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 0,
-            .z = 1,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 1,
-            .z = 1,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = -1,
-            .z = 0,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 0,
-            .z = -1,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = -1,
-            .z = -1,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = 1,
-            .z = -1,
-            .data = &data,
-        });
-        try client.sendPacket(mc.packets.play.client.ChunkWithLight{
-            .x = -1,
-            .z = 1,
-            .data = &data,
-        });
+        // try client.sendPacket(mc.packets.play.client.SetCenterChunk{
+            // .x = 0,
+            // .z = 0,
+        // });
+        // try client.sendPacket(mc.packets.play.client.GameEvent{
+            // .data = .start_waiting_for_level_chunks,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 0,
+        //     .z = 0,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 1,
+        //     .z = 0,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 0,
+        //     .z = 1,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 1,
+        //     .z = 1,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = -1,
+        //     .z = 0,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 0,
+        //     .z = -1,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = -1,
+        //     .z = -1,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = 1,
+        //     .z = -1,
+        //     .data = &data,
+        // });
+        // try client.sendPacket(mc.packets.play.client.ChunkWithLight{
+        //     .x = -1,
+        //     .z = 1,
+        //     .data = &data,
+        // });
     }
 };
 

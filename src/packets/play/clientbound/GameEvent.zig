@@ -1,6 +1,6 @@
 const std = @import("std");
-const protocol = @import("protocol");
-const d = @import("data");
+const protocol = @import("../../../root.zig").protocol;
+const d = @import("root").data;
 const GameMode = @import("Login.zig").GameMode;
 
 pub const id = 0x26;

@@ -1,5 +1,5 @@
 const std = @import("std");
-const protocol = @import("protocol");
+const protocol = @import("../../../root.zig").protocol;
 
 pub const id = 0x5c;
 const SetCenterChunk = @This();

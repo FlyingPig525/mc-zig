@@ -5,14 +5,16 @@ const World = @import("World.zig");
 const TcpServer = @import("TcpServer.zig");
 const TcpClient = @import("TcpClient.zig");
 const ManagedClient = @import("Client.zig").ManagedClient;
-const reg = @import("registry");
-const packets = @import("packets");
+const root = @import("root.zig");
+const reg = root.registry;
+const packets = root.packets;
 
 const log = std.log.scoped(.server);
 pub fn ManagedServer(comptime Manager: type) type {
     return struct {
         const Server = @This();
         const Client = ManagedClient(Manager);
+        const events = root.Event(Manager);
 
         io: std.Io,
         alloc: std.mem.Allocator,
@@ -79,19 +81,39 @@ pub fn ManagedServer(comptime Manager: type) type {
         fn handle_login(this: *Server, client: *Client, index: usize) void {
             client.handleConnection(this.alloc) catch |err| {
                 log.err("Error in client login sequence: {any}", .{ err });
-                if (!client.kicked) {
-                    client.kick("Internal server error");
-                }
-                client.deinit(this.alloc);
-                // client.deinit();
-                _ = this.clients.swapRemove(index);
+                this.disconnect(client, .{ .index = index, .message = "Internal server error" });
                 return;
             };
-            if (std.meta.hasFn(Manager, "onConfigureFinish")) {
-                this.manager.onConfigureFinish(this, client) catch |err| {
+            if (!std.meta.hasFn(Manager, "onConfigureFinish")) {
+                const name = @typeName(Manager);
+                @compileError(
+                    "Manager type must have a method with signature " ++
+                    "`onConfigureFinish("++name++", *ManagedServer("++name++"), *ManagedClient("++name++"), *ConfigurationFinish("++name++"))`"
+                );
+            } else {
+                var e: events.ConfigurationFinish = .{
+                    .world = null,
+                    .spawn_position = .{ .x = 0, .y = 0, .z = 0 },
+                };
+                this.manager.onConfigureFinish(this, client, &e) catch |err| {
                     log.err("Error in manager onConfigureFinish: {any}", .{ err });
                     printStacktrace(this.alloc);
                 };
+
+                if (e.world == null) {
+                    this.disconnect(client, .{ .index = index, .message = "Internal server error" });
+                    log.err("onConfigureFinish does not set world ptr in event data", .{});
+                    return;
+                }
+
+                e.world.?.addClient(client, e.spawn_position, this.alloc) catch |err| {
+                    log.err("Error when adding client to world: {any}", .{ err });
+                    this.disconnect(client, .{ .index = index, .message = "Internal server error" });
+                    return;
+                };
+
+                client.state.store(.play, .release);
+                client.last_keep_alive = this.curr_tick.load(.acquire);
             }
         }
 
@@ -118,6 +140,7 @@ pub fn ManagedServer(comptime Manager: type) type {
                 });
                 return;
             }
+            client.deinit(this.alloc);
             _ = this.clients.swapRemove(i.?);
         }
 

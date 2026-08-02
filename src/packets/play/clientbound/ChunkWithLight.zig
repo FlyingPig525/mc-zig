@@ -1,6 +1,6 @@
 const std = @import("std");
-const protocol = @import("protocol");
-const d = @import("data");
+const protocol = @import("../../../root.zig").protocol;
+const d = @import("root").data;
 
 pub const id = 0x2c;
 const ChunkWithLight = @This();
@@ -54,5 +54,26 @@ pub const PacketSection = struct {
         try writer.writeInt(i16, this.fluid_count, .big);
         try this.block_states.write(writer);
         try this.biomes.write(writer);
+    }
+
+    pub fn deinit(this: PacketSection, alloc: std.mem.Allocator) void {
+        switch (this.block_states) {
+            .direct => |dir| {
+                alloc.free(dir.entries);
+            },
+            .indirect => {
+                unreachable;
+            },
+            else => {},
+        }
+        switch (this.biomes) {
+            .direct => |dir| {
+                alloc.free(dir.entries);
+            },
+            .indirect => {
+                unreachable;
+            },
+            else => {},
+        }
     }
 };

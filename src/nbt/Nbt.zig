@@ -192,6 +192,21 @@ pub fn write(this: Nbt, writer: *std.Io.Writer) WriteError!void {
     try comp.write(writer, this.name != null);
 }
 
+pub fn encodeStruct(comptime T: type, value: T, alloc: std.mem.Allocator, comptime dont_encode_unsupported: bool) !Nbt {
+    if (@typeInfo(T) != .@"struct") @compileError("Input type must be a struct");
+    const fields: []const std.builtin.Type.StructField = std.meta.fields(T);
+    const tags: [fields.len]Tag = undefined;
+    for (fields, 0..) |field, i| {
+        tags[i] = Tag.fromValue(field.type, @field(value, field.name), dont_encode_unsupported);
+    }
+    const arena = std.heap.ArenaAllocator.init(alloc);
+    return .{
+        .name = null,
+        .root = arena.allocator().dupe(Tag, &tags),
+        .arena = arena,
+    };
+}
+
 pub fn dump(this: Nbt, writer: *std.Io.Writer) !void {
     try writer.print("Compound({?s})\n", .{ this.name });
     for (this.root) |tag| {
@@ -333,6 +348,26 @@ pub const Tag = union(TagType) {
                 }
             },
             else => unreachable,
+        }
+    }
+
+    pub fn fromValue(comptime T: type, value: T, comptime dont_encode_unsupported: bool) Tag {
+        switch (T) {
+            void => return .end,
+            i8, u8 => return .{ .byte = @bitCast(value) },
+            i16, u16 => return .{ .short = @bitCast(value) },
+            i32, u32 => return .{ .int = @bitCast(value) },
+            i64, u64 => return .{ .long = @bitCast(value) },
+            f32 => return .{ .float = value },
+            f64 => return .{ .double = value },
+            []const i8, []i8 => return .{ .byte_array = value },
+            []const u8, []u8 => return .{ .string = value },
+            []const i32, []i32, []const u32, []u32 => return .{ .int_array = @ptrCast(value) },
+            []const i64, []i64, []const u64, []u64 => return .{ .long_array = @ptrCast(value) },
+            else => {
+                if (dont_encode_unsupported) return .no_encode;
+                @compileError("Unsupported type " ++ @typeName(T) ++ "");
+            }
         }
     }
 

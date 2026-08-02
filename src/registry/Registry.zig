@@ -1,7 +1,8 @@
 const std = @import("std");
 const Entry = @import("Entry.zig");
-const protocol = @import("protocol");
-const data = @import("data");
+const root = @import("../root.zig");
+const protocol = root.protocol;
+const data = root.data;
 
 const Registry = @This();
 

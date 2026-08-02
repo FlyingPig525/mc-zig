@@ -6,6 +6,14 @@ z: f64,
 yaw: f32 = 0,
 pitch: f32 = 0,
 
+pub fn chunkX(this: Position) i32 {
+    return @intFromFloat(this.x / 16);
+}
+
+pub fn chunkZ(this: Position) i32 {
+    return @intFromFloat(this.z / 16);
+}
+
 pub fn add(this: Position, other: Position) Position {
     return .{
         .x = this.x + other.x,

@@ -1,6 +1,6 @@
 const std = @import("std");
-const data = @import("data");
-const protocol = @import("protocol");
+const data = @import("root").data;
+const protocol = @import("../../../root.zig").protocol;
 
 pub const id = 0x44;
 const PlayerInfoUpdate = @This();

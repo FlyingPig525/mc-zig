@@ -1,6 +1,6 @@
 const std = @import("std");
-const reg = @import("registry");
-const protocol = @import("protocol");
+const reg = @import("../../../root.zig").registry;
+const protocol = @import("../../../root.zig").protocol;
 
 const RegistryData = @This();
 pub const id = 0x07;

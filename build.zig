@@ -16,54 +16,12 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const protocol = b.addModule("protocol", .{
-        .root_source_file = b.path("src/protocol/root.zig"),
-        .target = target,
-        .optimize = optimize,
-    });
-
-    const data = b.addModule("data", .{
-        .root_source_file = b.path("src/data/root.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "protocol", .module = protocol },
-        }
-    });
-
-    const registry = b.addModule("registry", .{
-        .root_source_file = b.path("src/registry/root.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "protocol", .module = protocol },
-            .{ .name = "data", .module = data },
-            .{ .name = "nbt", .module = nbt },
-        }
-    });
-
-    const packets = b.addModule("packets", .{
-        .root_source_file = b.path("src/packets/root.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "protocol", .module = protocol },
-            .{ .name = "data", .module = data },
-            .{ .name = "nbt", .module = nbt },
-            .{ .name = "registry", .module = registry },
-        },
-    });
-
     const mod = b.addModule("mc", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
         .optimize = optimize,
         .imports = &.{
-            .{ .name = "protocol", .module = protocol },
-            .{ .name = "packets", .module = packets },
-            .{ .name = "data", .module = data },
             .{ .name = "nbt", .module = nbt },
-            .{ .name = "registry", .module = registry },
         }
     });
 
@@ -107,16 +65,10 @@ pub fn build(b: *std.Build) void {
     });
     const run_nbt_tests = b.addRunArtifact(nbt_tests);
 
-    const registry_tests = b.addTest(.{
-        .root_module = registry,
-    });
-    const run_registry_tests = b.addRunArtifact(registry_tests);
-
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&run_mod_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_nbt_tests.step);
-    test_step.dependOn(&run_registry_tests.step);
 
     const gen_exe = b.addExecutable(.{
         .name = "gen",
@@ -128,9 +80,14 @@ pub fn build(b: *std.Build) void {
     });
     b.installArtifact(gen_exe);
 
+    const gen_variants = b.option(bool, "gen-variants", "Whether to generate variant code. No-op if not used with gen step") orelse false;
+
     const gen_step = b.step("gen", "Generate data from a game jar");
     const run_gen = b.addRunArtifact(gen_exe);
     run_gen.setCwd(b.path("gen"));
+    if (gen_variants) {
+        run_gen.addArg("variant");
+    }
     gen_step.dependOn(&run_gen.step);
     gen_step.dependOn(b.getInstallStep());
 }

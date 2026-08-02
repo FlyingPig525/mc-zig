@@ -1,6 +1,6 @@
 const std = @import("std");
 const Nbt = @import("nbt").Nbt;
-const protocol = @import("protocol");
+const protocol = @import("../root.zig").protocol;
 
 const Entry = @This();
 
